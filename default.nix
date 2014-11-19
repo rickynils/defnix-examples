@@ -2,8 +2,6 @@
 
 let
 
-  system = builtins.currentSystem;
-
   bind = ma: f: lib.join (lib.map f ma);
 
   nixpkgs = lib.builtins.fetchgit {
@@ -16,7 +14,7 @@ let
     rev = "145da08e0dfde33761e6518ccb9f72d3f74b07d0";
   };
 
-  defnix = bind defnix-src (p: import p lib { config.target-system = system; });
+  defnix = bind defnix-src (p: import p lib { });
 
   deployment = defnix: nixpkgs: defnix.defnixos.functionality-implementations.nixops-deploy {
     inherit nixpkgs;
@@ -34,7 +32,7 @@ let
 #      };
 #    };
 
-#    functionalities = let pkgs = import nixpkgs { inherit system; }; in {
+#    functionalities = let pkgs = import nixpkgs { }; in {
 #      f1 = {
 #        service = import ./service.nix defnix { inherit pkgs; name = "service-f1"; };
 #      };
