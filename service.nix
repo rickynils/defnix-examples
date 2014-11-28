@@ -1,4 +1,4 @@
-defnix: nixpkgs: let pkgs = import nixpkgs { inherit (defnix.config) system; }; in
+defnix: pkgs:
 
 { name ? "myservice" }:
 
