@@ -1,14 +1,10 @@
-defnix:
+defnix: nixpkgs: let pkgs = import nixpkgs { inherit (defnix.config) system; }; in
 
-{ pkgs
-, name ? "myservice"
-}:
+{ name ? "myservice" }:
 
-let
+with pkgs;
 
-  inherit (pkgs) writeScript bash;
-
-in {
+{
   start = writeScript "myservice" ''
     #!${bash}/bin/bash
     echo "Running my ${name} service"
