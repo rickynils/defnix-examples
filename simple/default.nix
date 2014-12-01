@@ -22,14 +22,10 @@ let
 
     f1 = {
       service = import ./service.nix defnix pkgs { name = "service-f1"; };
-      tags = [ "web" ];
-      conflicting-functionalities = [ "web" ];
     };
 
     f2 = {
       service = import ./service.nix defnix pkgs { name = "service-f2"; };
-      tags = [ "web" ];
-      conflicting-functionalities = [ "web" ];
     };
 
   };

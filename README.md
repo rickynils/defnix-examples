@@ -1,5 +1,3 @@
 # defnix examples
 
-```
-nix-exec default.nix
-```
+Playground for `https://github.com/zalora/defnix` experiments and showcases.
