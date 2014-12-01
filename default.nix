@@ -1,5 +1,7 @@
 { args, lib }:
 
+with builtins;
+
 let
 
   bind = ma: f: lib.join (lib.map f ma);
@@ -20,24 +22,36 @@ let
 
     f1 = {
       service = import ./service.nix defnix pkgs { name = "service-f1"; };
+      tags = [ "web" ];
+      conflicting-functionalities = [ "web" ];
     };
 
     f2 = {
       service = import ./service.nix defnix pkgs { name = "service-f2"; };
+      tags = [ "web" ];
+      conflicting-functionalities = [ "web" ];
     };
 
   };
 
-  io-deployment = defnix: nixpkgs-src:
-    let
-      pkgs = import nixpkgs-src { inherit (defnix.config) system; };
-      fs = functionalities defnix pkgs;
-      deployment = defnix.lib.map-attrs (n: v: v // {
-        inherit nixpkgs-src;
-        nixops-name = "mydeploy";
-        nixops-description = "mydeploy";
-        nixops-deploy-target = "virtualbox";
-      }) fs;
-    in defnix.defnixos.functionalities.nixops-deploy deployment;
+  io-deployment = defnix: nixpkgs-src: with defnix.defnixos.functionalities; let
+
+    pkgs = import nixpkgs-src { inherit (defnix.config) system; };
+
+    fs = functionalities defnix pkgs;
+
+    test = lib.unit (nixos-qemu-test (defnix.lib.map-attrs (n: v: v // {
+      inherit nixpkgs-src;
+      unit-test-command = "true";
+    }) fs));
+
+    vbox = nixops-deploy (defnix.lib.map-attrs (n: v: v // {
+      inherit nixpkgs-src;
+      nixops-name = "mydeploy";
+      nixops-description = "mydeploy";
+      nixops-deploy-target = "virtualbox";
+    }) fs);
+
+  in if length args > 1 && (elemAt args 1) == "test" then test else vbox;
 
 in bind io-defnix (dn: bind io-nixpkgs-src (io-deployment dn))
