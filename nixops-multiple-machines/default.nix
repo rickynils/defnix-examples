@@ -4,6 +4,16 @@ with builtins;
 
 let
 
+  # backendCount is the knob that can be used to scale up or down,
+  # either manually or automatically.
+  # Automatic scaling would require an external agent that can
+  # inspect the performance of the running systemm, decide on
+  # a new value for backendCount, commit changes here and then
+  # perform a deployment
+
+  backendCount = 3;
+
+
   bind = ma: f: lib.join (lib.map f ma);
 
   io-nixpkgs-src = lib.builtins.fetchgit {
@@ -18,25 +28,37 @@ let
 
   io-defnix = bind io-defnix-src (p: import p lib { });
 
-  machines = [
-    { memory = 2048; }
-    { memory = 4096; }
-  ];
+  io-deployment = defnix: nixpkgs-src: let
 
-  functionalities = defnix: pkgs: [
+    pkgs = import nixpkgs-src { inherit (defnix.config) system; };
 
-    { service = import ./service.nix defnix pkgs { name = "service-f1"; }; }
+    inherit (pkgs.lib) nameValuePair range listToAttrs mapAttrs';
 
-    { service = import ./service.nix defnix pkgs { name = "service-f2"; }; }
+    nixops-multi-deploy = import ./nixops-multi-deploy.nix defnix nixpkgs-src;
 
-  ];
+    # Put all functionalities into one machine
+    mkAllInOneInfrastructure = machineTmpl: functionalities: {
+      machine = machineTmpl // { inherit functionalities; };
+    };
 
-  nixops-multi-deploy = import ./nixops-multi-deploy.nix;
+    # Put every functionality on its own machine
+    mkOneToOneInfrastructure = machineTmpl: functionalities: mapAttrs'
+      (fn: f: nameValuePair "machine-${fn}"
+        (machineTmpl // { functionalities = { "${fn}" = f; }; }))
+      functionalities;
 
-  io-deployment = defnix: nixpkgs-src:
-    let
-      pkgs = import nixpkgs-src { inherit (defnix.config) system; };
-      fs = functionalities defnix pkgs;
-    in nixops-multi-deploy defnix nixpkgs-src machines fs;
+    machineTmpl = {
+      memory = 2048;
+    };
+
+    mkFun = i: {
+      service = import ./service.nix defnix pkgs { name = "service-f${toString i}"; };
+    };
+
+    functionalities =
+      listToAttrs (map (i: nameValuePair "f${toString i}" (mkFun i)) (range 1 backendCount));
+
+    in nixops-multi-deploy (mkOneToOneInfrastructure machineTmpl functionalities);
+   #in nixops-multi-deploy (mkAllInOneInfrastructure machineTmpl functionalities);
 
 in bind io-defnix (dn: bind io-nixpkgs-src (io-deployment dn))

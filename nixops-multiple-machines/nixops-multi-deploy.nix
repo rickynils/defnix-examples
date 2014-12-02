@@ -1,4 +1,4 @@
-defnix: nixpkgs: machines: functionalities:
+defnix: nixpkgs: infrastructure:
 
 with builtins;
 
@@ -6,7 +6,7 @@ let
 
   pkgs = import nixpkgs { inherit (defnix.config) system; };
 
-  inherit (pkgs.lib) zipListsWith concatStrings;
+  inherit (pkgs.lib) mapAttrsToList concatStrings;
 
   assertions =
     # stupid assertion for now
@@ -24,9 +24,9 @@ let
 
   inherit (defnix.defnixos.functionalities) generate-nixos-config;
 
-  mkMachineExpr = machine: functionality: ''
-    ${machine.name} = {
-      imports = [ ${generate-nixos-config { inherit functionality; }} ];
+  mkMachineExpr = name: machine: ''
+    ${name} = {
+      imports = [ ${generate-nixos-config machine.functionalities} ];
       deployment = {
         targetEnv = "virtualbox";
           virtualbox = {
@@ -39,7 +39,7 @@ let
 
   expr = write-file "deployment.nix" ''
     {
-      ${concatStrings (zipListsWith mkMachineExpr (imap (i: m: m // { name = "machine${toString i}"; }) machines) functionalities)}
+      ${concatStrings (mapAttrsToList mkMachineExpr infrastructure)}
     }
   '';
 
